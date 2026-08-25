@@ -101,7 +101,11 @@ def propose(static_context: str, dynamic_context: str, attempt: int = 0) -> Rung
 
         usage = data.get("usage") or {}
         model_usage = data.get("modelUsage") or {}
-        model = next(iter(model_usage.keys()), config.CLAUDE_CODE_MODEL)
+        # modelUsage may list helper models (haiku for titles etc.); attribute to the one that did the work
+        model = config.CLAUDE_CODE_MODEL
+        if model_usage:
+            model = max(model_usage, key=lambda k: ((model_usage[k] or {}).get("costUSD") or 0,
+                                                    (model_usage[k] or {}).get("outputTokens") or 0))
         return RungResult(
             source=source, rung=NAME, model=model,
             input_tokens=int(usage.get("input_tokens") or 0),

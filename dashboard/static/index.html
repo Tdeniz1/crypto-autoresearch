@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>autoresearch · ratchet panel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #0f1011; --panel: #161819; --panel-2: #1c1f21; --line: #2a2e31; --line-2: #3a3f43;
+    --ink: #f2f1ec; --ink-2: #b9b8ae; --ink-3: #7c7b73;
+    --kept: #3987e5; --reverted: #d95926; --rejected: #6d7278; --best: #f2f1ec; --bh: #d95926; --strat: #3987e5;
+    --good: #199e70; --warn: #c98500; --serious: #e66767; --amber: #c98500;
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    --sans: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+    --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px;
+    --r: 3px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 13px; line-height: 1.45; }
+  a { color: inherit; }
+  .banner { position: sticky; top: 0; z-index: 20; background: repeating-linear-gradient(135deg, #2b2004 0 14px, #241b03 14px 28px); border-bottom: 1px solid #5a4508; color: #f3d27a; padding: var(--s2) var(--s4); font-family: var(--mono); font-size: 12px; letter-spacing: .02em; display: flex; gap: var(--s3); align-items: center; }
+  .banner b { color: #ffe08a; }
+  header { display: grid; grid-template-columns: 1fr auto; gap: var(--s4); align-items: end; padding: var(--s5) var(--s4) var(--s3); border-bottom: 1px solid var(--line); }
+  h1 { margin: 0; font-family: var(--mono); font-weight: 500; font-size: clamp(18px, 2.2vw, 24px); letter-spacing: -.01em; }
+  h1 small { color: var(--ink-3); font-weight: 400; font-size: 12px; margin-left: var(--s3); }
+  .status { font-family: var(--mono); font-size: 12px; color: var(--ink-2); text-align: right; }
+  .status .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--ink-3); margin-right: 6px; vertical-align: middle; }
+  .status .dot.live { background: var(--good); box-shadow: 0 0 0 3px rgba(25,158,112,.25); }
+  .status .dot.stale { background: var(--warn); }
+  main { display: grid; grid-template-columns: repeat(12, 1fr); gap: 1px; background: var(--line); border-bottom: 1px solid var(--line); }
+  section { background: var(--panel); padding: var(--s4); min-width: 0; }
+  section h2 { margin: 0 0 var(--s3); font-family: var(--mono); font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: .12em; color: var(--ink-3); display: flex; justify-content: space-between; align-items: baseline; }
+  section h2 .n { color: var(--ink-3); font-weight: 400; letter-spacing: 0; text-transform: none; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-left: var(--s3); }
+  section h2 > :first-child { flex: none; }
+  .c4 { grid-column: span 4; } .c5 { grid-column: span 5; } .c7 { grid-column: span 7; } .c8 { grid-column: span 8; } .c12 { grid-column: span 12; }
+  @media (max-width: 1100px) { .c4, .c5, .c7, .c8 { grid-column: span 12; } }
+  /* stat tiles */
+  .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s3) var(--s4); }
+  .tile .k { font-family: var(--mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: .1em; color: var(--ink-3); }
+  .tile .v { font-family: var(--mono); font-size: 22px; font-weight: 500; line-height: 1.1; margin-top: 2px; font-variant-numeric: tabular-nums; }
+  .tile .v small { font-size: 12px; color: var(--ink-2); font-weight: 400; margin-left: 2px; }
+  .kv { font-family: var(--mono); font-size: 12px; display: grid; grid-template-columns: auto 1fr; gap: 3px var(--s3); margin-top: var(--s4); color: var(--ink-2); }
+  .kv .k { color: var(--ink-3); }
+  .badge { display: inline-block; font-family: var(--mono); font-size: 11px; padding: 2px 8px; border: 1px solid var(--line-2); border-radius: var(--r); background: var(--panel-2); color: var(--ink); }
+  .badge.r1 { border-color: #2c5a8f; } .badge.r2 { border-color: #7a3e1b; } .badge.r3 { border-color: #5a3d8f; } .badge.off { color: var(--ink-3); }
+  .bar { height: 8px; background: var(--panel-2); border: 1px solid var(--line-2); border-radius: 2px; overflow: hidden; margin-top: 4px; }
+  .bar i { display: block; height: 100%; background: var(--kept); width: 0; transition: width .5s cubic-bezier(.2,.7,.2,1); }
+  .bar i.hot { background: var(--serious); }
+  .demote { font-family: var(--mono); font-size: 11.5px; color: var(--ink-2); margin: 2px 0; }
+  .demote b { color: var(--warn); font-weight: 500; }
+  .spend { display: grid; grid-template-columns: auto 1fr auto; gap: 2px var(--s3); font-family: var(--mono); font-size: 12px; margin-top: var(--s3); }
+  .muted { color: var(--ink-3); }
+  /* charts */
+  .chart { position: relative; height: 300px; }
+  .chart.tall { height: 340px; }
+  .note { font-family: var(--mono); font-size: 12px; color: var(--ink-2); margin-top: var(--s3); padding: var(--s2) var(--s3); border-left: 2px solid var(--line-2); }
+  .note.exhausted { border-left-color: var(--warn); color: #f3d27a; }
+  .note.bad { border-left-color: var(--serious); color: #ffb3b3; }
+  .note.good { border-left-color: var(--good); }
+  .legend { display: flex; gap: var(--s4); font-family: var(--mono); font-size: 11px; color: var(--ink-2); margin-bottom: var(--s2); flex-wrap: wrap; }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+  /* tables */
+  .tbl-wrap { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-family: var(--mono); font-size: 12px; font-variant-numeric: tabular-nums; }
+  th, td { padding: 6px 8px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+  th { color: var(--ink-3); font-weight: 500; font-size: 10.5px; text-transform: uppercase; letter-spacing: .08em; position: sticky; top: 0; background: var(--panel); }
+  td.l, th.l { text-align: left; }
+  th.pair, td.pair { border-left: 1px dashed var(--line-2); }
+  th.pair-end, td.pair-end { border-right: 1px dashed var(--line-2); }
+  tbody tr { cursor: pointer; }
+  tbody tr:hover { background: var(--panel-2); }
+  tbody tr.top td:first-child { color: var(--kept); }
+  .chip { display: inline-block; font-size: 10px; letter-spacing: .04em; padding: 1px 6px; border-radius: var(--r); margin: 1px 2px 1px 0; border: 1px solid; font-weight: 500; }
+  .chip.warn { color: #ffd27a; border-color: #8a6412; background: #2b2004; }
+  .chip.serious { color: #ffb3b3; border-color: #8f3a3a; background: #2d1414; }
+  .chip.ok { color: #9fe0c3; border-color: #1f6a4c; background: #0f2a20; }
+  .chip.info { color: var(--ink-2); border-color: var(--line-2); background: var(--panel-2); }
+  .desc { max-width: 260px; overflow: hidden; text-overflow: ellipsis; color: var(--ink-2); }
+  .empty { color: var(--ink-3); font-family: var(--mono); font-size: 12px; padding: var(--s4) 0; }
+  /* drawer */
+  #drawer { position: fixed; inset: 0 0 0 auto; width: min(760px, 100vw); background: var(--panel); border-left: 1px solid var(--line-2); transform: translateX(102%); transition: transform .32s cubic-bezier(.2,.8,.2,1); z-index: 30; display: flex; flex-direction: column; box-shadow: -20px 0 60px rgba(0,0,0,.5); }
+  #drawer.open { transform: translateX(0); }
+  #drawer header { padding: var(--s3) var(--s4); grid-template-columns: 1fr auto; }
+  #drawer pre { margin: 0; padding: var(--s4); overflow: auto; font-family: var(--mono); font-size: 12px; line-height: 1.5; flex: 1; white-space: pre; }
+  #drawer .add { color: #9fe0c3; } #drawer .del { color: #ffb3b3; } #drawer .hunk { color: var(--kept); } #drawer .meta { color: var(--ink-3); }
+  #drawer button { background: none; border: 1px solid var(--line-2); color: var(--ink); font-family: var(--mono); padding: 4px 10px; border-radius: var(--r); cursor: pointer; }
+  footer { padding: var(--s3) var(--s4); font-family: var(--mono); font-size: 11px; color: var(--ink-3); display: flex; justify-content: space-between; flex-wrap: wrap; gap: var(--s3); }
+</style>
+</head>
+<body>
+<div class="banner">⚠ <span><b>Leaderboard rank is validation performance.</b> It is not evidence until the holdout is run — by hand, with <code>scripts/run_holdout.py</code>. Nothing on this page reads the holdout.</span></div>
+<header>
+  <h1>autoresearch <small id="sessionId">—</small></h1>
+  <div class="status"><span class="dot" id="dot"></span><span id="statusText">connecting…</span><br><span class="muted" id="tick"></span></div>
+</header>
+<main>
+  <section class="c4" id="p1">
+    <h2><span>1 · session health</span><span class="n" id="rungBadge"></span></h2>
+    <div class="tiles">
+      <div class="tile"><div class="k">experiments</div><div class="v" id="hExp">—</div></div>
+      <div class="tile"><div class="k">kept</div><div class="v" id="hKept">—</div></div>
+      <div class="tile"><div class="k">keep rate</div><div class="v" id="hRate">—</div></div>
+      <div class="tile"><div class="k">elapsed</div><div class="v" id="hElapsed">—</div></div>
+      <div class="tile"><div class="k">mean s / exp</div><div class="v" id="hMean">—</div></div>
+      <div class="tile"><div class="k">fit before stop</div><div class="v" id="hProj">—</div></div>
+    </div>
+    <div class="kv" id="hMeta"></div>
+    <h2 style="margin-top:16px">demotions <span class="n" id="hDemN"></span></h2>
+    <div id="hDem" class="empty">none this session</div>
+    <h2 style="margin-top:16px">spend by rung</h2>
+    <div class="spend" id="hSpend"></div>
+    <div class="kv" style="margin-top:8px"><span class="k">rung 3 cap</span><span id="hCapText"></span></div>
+    <div class="bar"><i id="hCap"></i></div>
+  </section>
+
+  <section class="c8" id="p2">
+    <h2><span>2 · the ratchet</span><span class="n">best-so-far metric (stepped) · every experiment as a point</span></h2>
+    <div class="legend"><span><i style="background:var(--best)"></i>best so far</span><span><i style="background:var(--kept)"></i>kept</span><span><i style="background:var(--reverted)"></i>reverted</span><span><i style="background:var(--rejected)"></i>rejected / −∞ (drawn at floor)</span></div>
+    <div class="chart"><canvas id="ratchet"></canvas></div>
+    <div class="note" id="ratchetNote">—</div>
+  </section>
+
+  <section class="c12" id="p3">
+    <h2><span>3 · strategy leaderboard</span><span class="n" id="lbMeta">top 15 by deflated Sharpe · LEAK_SUSPECTED excluded · click a row for the diff</span></h2>
+    <div class="tbl-wrap"><table id="lb">
+      <thead><tr>
+        <th>#</th><th>exp</th><th>val metric</th><th>sharpe net</th><th>deflated</th><th>max dd</th><th>trades</th>
+        <th class="pair">win rate</th><th class="pair-end">payoff</th><th>time in mkt</th><th>turnover/yr</th><th class="l">rung</th><th class="l">sha</th><th class="l">flags</th><th class="l">idea</th>
+      </tr></thead>
+      <tbody></tbody>
+    </table></div>
+    <div id="lbExcluded" class="note bad" style="display:none"></div>
+  </section>
+
+  <section class="c7" id="p4">
+    <h2><span>4 · equity vs buy &amp; hold</span><span class="n" id="eqMeta"></span></h2>
+    <div class="note" id="eqNote">—</div>
+    <div class="legend"><span><i style="background:var(--strat)"></i>strategy</span><span><i style="background:var(--bh)"></i>buy &amp; hold</span><span class="muted">normalised to 1.0 at validation start · one line per series (solid = strategy, dashed = B&amp;H)</span></div>
+    <div class="chart tall"><canvas id="equity"></canvas></div>
+  </section>
+
+  <section class="c5" id="p5">
+    <h2><span>5 · proposer scoreboard</span><span class="n">by rung × model</span></h2>
+    <div class="tbl-wrap"><table id="prop">
+      <thead><tr><th class="l">rung / model</th><th>calls</th><th>keep</th><th>mean Δ kept</th><th>$ / kept</th><th>latency</th></tr></thead>
+      <tbody></tbody>
+    </table></div>
+    <h2 style="margin-top:20px"><span>6 · suspicion flags</span><span class="n">heuristics applied to every leaderboard row</span></h2>
+    <div id="flagsLegend" class="kv" style="margin-top:4px"></div>
+  </section>
+</main>
+<footer>
+  <span>read-only · polls /api/state every 3 s · skips a tick if a log is mid-write</span>
+  <span id="cfg"></span>
+</footer>
+
+<div id="drawer">
+  <header><div><b id="dTitle" style="font-family:var(--mono);font-weight:500"></b><div class="muted" id="dSub" style="font-family:var(--mono);font-size:11px"></div></div><button onclick="closeDrawer()">close ✕</button></header>
+  <pre id="dBody"></pre>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const fmt = {
+  n: (x, d = 2) => (x == null || !isFinite(x)) ? '—' : Number(x).toFixed(d),
+  s: (x, d = 3) => (x == null || !isFinite(x)) ? '−∞' : (x >= 0 ? '+' : '') + Number(x).toFixed(d),
+  pct: (x, d = 0) => (x == null || !isFinite(x)) ? '—' : (100 * x).toFixed(d) + '%',
+  usd: (x) => '$' + Number(x || 0).toFixed(3),
+  dur: (s) => { if (s == null) return '—'; s = Math.max(0, s); const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60); return h ? `${h}h ${String(m).padStart(2, '0')}m` : `${m}m ${String(Math.floor(s % 60)).padStart(2, '0')}s`; },
+};
+const RUNG_CLASS = { openrouter: 'r1', claude_code: 'r2', anthropic: 'r3', mock: 'off' };
+const RUNG_LABEL = { openrouter: 'rung 1 · openrouter', claude_code: 'rung 2 · claude code', anthropic: 'rung 3 · anthropic api', mock: 'mock' };
+const FLAG_DEF = {
+  NEAR_TRADE_FLOOR: ['warn', 'trade count within 20% of the MIN_TRADES floor'],
+  LOW_TIME_IN_MARKET: ['warn', 'time in market under 5%'],
+  HIGH_TURNOVER: ['warn', 'annual turnover above the configured limit'],
+  DEEP_DRAWDOWN: ['serious', 'max drawdown worse than the configured limit'],
+  IMPROVEMENT_WITHIN_NOISE: ['warn', 'metric improvement smaller than the std of the last 20 experiments'],
+  LEAK_SUSPECTED: ['serious', 'canary 1: still scores on shuffled returns — excluded from ranking'],
+  TIMING_FRAGILE: ['serious', 'canary 2: edge vanishes with one extra bar of delay'],
+  COST_MODEL_BROKEN: ['serious', 'canary 3: inverted strategy also profits / cost identity violated'],
+};
+
+let ratchetChart, equityChart, lastState = null, misses = 0;
+Chart.defaults.font.family = css('--mono');
+Chart.defaults.color = css('--ink-3');
+Chart.defaults.borderColor = css('--line');
+
+function mkRatchet() {
+  ratchetChart = new Chart($('ratchet'), {
+    type: 'scatter',
+    data: { datasets: [
+      { label: 'best so far', type: 'line', data: [], stepped: 'before', borderColor: css('--best'), borderWidth: 2, pointRadius: 0, order: 0, tension: 0 },
+      { label: 'kept', data: [], backgroundColor: css('--kept'), pointRadius: 4.5, pointHoverRadius: 7, borderColor: css('--bg'), borderWidth: 1.5 },
+      { label: 'reverted', data: [], backgroundColor: 'rgba(217,89,38,.55)', pointRadius: 3, pointHoverRadius: 6 },
+      { label: 'rejected / −∞', data: [], backgroundColor: 'rgba(109,114,120,.7)', pointRadius: 3, pointStyle: 'crossRot', borderColor: 'rgba(109,114,120,.9)', borderWidth: 1.5, pointHoverRadius: 6 },
+    ] },
+    options: { animation: false, responsive: true, maintainAspectRatio: false, interaction: { mode: 'nearest', intersect: false },
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => { const p = c.raw; return p.label || `${c.dataset.label}: exp ${p.x} → ${fmt.s(p.y)}`; } } } },
+      scales: { x: { title: { display: true, text: 'experiment #' }, grid: { color: css('--line') }, ticks: { precision: 0 } },
+                y: { title: { display: true, text: 'validation metric' }, grid: { color: css('--line') } } } }
+  });
+}
+function mkEquity() {
+  equityChart = new Chart($('equity'), {
+    type: 'line',
+    data: { datasets: [] },
+    options: { animation: false, responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, parsing: false, normalized: true,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => `${c.dataset.label}: ${fmt.n(c.raw.y, 3)}×` } } },
+      scales: { x: { type: 'linear', title: { display: true, text: '% of validation window (each series spans 0–100)' }, min: 0, max: 100, grid: { color: css('--line') } },
+                y: { title: { display: true, text: 'equity (start = 1.0)' }, grid: { color: css('--line') } } } }
+  });
+}
+
+function chip(name) { const d = FLAG_DEF[name] || ['info', name]; return `<span class="chip ${d[0]}" title="${d[1]}">${name.replace(/_/g, ' ')}</span>`; }
+function esc(s) { return String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+
+function render(st) {
+  lastState = st;
+  const h = st.health, s = st.session;
+  $('sessionId').textContent = s.id || 'no session yet';
+  $('dot').className = 'dot ' + (s.running ? 'live' : 'stale');
+  $('statusText').textContent = s.running ? 'runner active' : (s.stop_reason ? `ended · ${s.stop_reason}` : 'runner idle — showing last session');
+  $('tick').textContent = `last record ${s.last_ts || '—'}`;
+
+  // ---- panel 1
+  $('hExp').textContent = h.experiments;
+  $('hKept').textContent = h.kept;
+  $('hRate').textContent = fmt.pct(h.keep_rate, 1);
+  $('hElapsed').textContent = fmt.dur(h.elapsed_s);
+  $('hMean').innerHTML = h.mean_seconds_per_experiment == null ? '—' : fmt.n(h.mean_seconds_per_experiment, 0) + '<small>s</small>';
+  $('hProj').innerHTML = h.projected_remaining == null ? '<small class="muted">' + (s.running ? 'no stop time' : 'not running') + '</small>' : `~${h.projected_remaining}`;
+  const rung = h.active_rung || h.last_rung;
+  $('rungBadge').innerHTML = rung ? `<span class="badge ${RUNG_CLASS[rung] || ''}">${h.active_rung ? '● ' : '○ '}${RUNG_LABEL[rung] || rung}${h.active_rung ? '' : ' (last used)'}</span>` : '';
+  $('hMeta').innerHTML = `<span class="k">rejected</span><span>${h.rejections}</span><span class="k">proposer failures</span><span>${h.proposer_failures}</span><span class="k">wall-clock stop</span><span>${h.stop_time ? new Date(h.stop_time * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'none set'}</span>`;
+  $('hDemN').textContent = h.demotions.length ? `${h.demotions.length}` : '';
+  $('hDem').className = h.demotions.length ? '' : 'empty';
+  $('hDem').innerHTML = h.demotions.length ? h.demotions.map(d => `<div class="demote"><b>${esc(d.from_rung)} → ${esc(d.to_rung || 'none')}</b> · ${esc(d.ts)}<br><span class="muted">${esc(d.reason)}</span></div>`).join('') : 'none this session';
+  const sp = Object.entries(h.spend_by_rung);
+  $('hSpend').innerHTML = sp.length ? sp.map(([k, v]) => `<span class="k muted">${esc(RUNG_LABEL[k] || k)}</span><span>${v.calls} calls</span><span>${fmt.usd(v.usd)}</span>`).join('') : '<span class="muted">no proposer calls yet</span>';
+  const capPct = h.rung3_cap_usd ? Math.min(100, 100 * h.rung3_spend_usd / h.rung3_cap_usd) : 0;
+  $('hCapText').textContent = `${fmt.usd(h.rung3_spend_usd)} of ${fmt.usd(h.rung3_cap_usd)} (${capPct.toFixed(0)}%)`;
+  $('hCap').style.width = capPct + '%'; $('hCap').className = capPct >= 80 ? 'hot' : '';
+
+  // ---- panel 2
+  const pts = st.ratchet.points;
+  const finite = pts.map(p => p.metric).filter(x => x != null);
+  const bestVals = pts.map(p => p.best).filter(x => x != null);
+  const lo = finite.length ? Math.min(...finite, ...bestVals) : -1, hi = finite.length ? Math.max(...finite, ...bestVals) : 1;
+  const floor = lo - (hi - lo || 1) * 0.08;
+  ratchetChart.data.datasets[0].data = [{ x: 0, y: st.ratchet.baseline }, ...pts.map(p => ({ x: p.exp, y: p.best }))].filter(p => p.y != null);
+  ratchetChart.data.datasets[1].data = pts.filter(p => p.status === 'kept').map(p => ({ x: p.exp, y: p.metric }));
+  ratchetChart.data.datasets[2].data = pts.filter(p => p.status === 'reverted' && p.metric != null).map(p => ({ x: p.exp, y: p.metric }));
+  ratchetChart.data.datasets[3].data = pts.filter(p => p.metric == null || (p.status !== 'kept' && p.status !== 'reverted')).map(p => ({ x: p.exp, y: p.metric == null ? floor : p.metric, label: `exp ${p.exp}: ${p.status}${p.metric == null ? ' (−∞)' : ' ' + fmt.s(p.metric)}` }));
+  ratchetChart.options.scales.y.min = floor - (hi - lo || 1) * 0.04;
+  ratchetChart.update();
+  const rn = $('ratchetNote');
+  if (!pts.length) { rn.className = 'note'; rn.textContent = 'no experiments yet'; }
+  else if (st.ratchet.exhausted) { rn.className = 'note exhausted'; rn.textContent = `Best-so-far has been flat for ${st.ratchet.flat_for} experiments (≥ ${st.ratchet.plateau_threshold}). The search looks exhausted at this program — change the research directions in program.md or accept the plateau.`; }
+  else { rn.className = 'note'; rn.textContent = `Best-so-far last improved ${st.ratchet.flat_for === 0 ? 'on the latest experiment' : st.ratchet.flat_for + ' experiments ago'} · plateau call-out at ${st.ratchet.plateau_threshold}.`; }
+
+  // ---- panel 3
+  const lb = st.leaderboard, tb = $('lb').querySelector('tbody');
+  $('lbMeta').textContent = `top ${Math.min(15, lb.rows.length)} of ${lb.rows.length + lb.excluded.length} scored · sort key = deflated Sharpe (${lb.n_trials} trials all-time) · click a row for the diff`;
+  tb.innerHTML = lb.rows.length ? lb.rows.map(r => `<tr class="${r.rank === 1 ? 'top' : ''}" data-sha="${esc(r.sha || '')}" data-exp="${r.exp}">
+      <td>${r.rank}</td><td>${r.exp}</td><td>${fmt.s(r.metric)}</td><td>${fmt.s(r.raw_sharpe, 2)}</td><td>${fmt.s(r.deflated_sharpe, 2)}</td>
+      <td>${fmt.pct(r.max_drawdown)}</td><td>${r.trades}<span class="muted"> / min ${r.min_trades}</span></td>
+      <td class="pair">${fmt.pct(r.win_rate)}</td><td class="pair-end">${fmt.n(r.payoff_ratio, 2)}</td>
+      <td>${fmt.pct(r.time_in_market)}</td><td>${fmt.n(r.turnover_annual, 0)}</td>
+      <td class="l"><span class="badge ${RUNG_CLASS[r.rung] || ''}" title="${esc(r.model)}">${esc(r.rung)}</span></td>
+      <td class="l">${r.sha ? `<code>${esc(r.sha)}</code>` : '<span class="muted">reverted</span>'}</td>
+      <td class="l">${[...r.canary_flags, ...r.flags].map(chip).join('') || (r.canaries && r.canaries.flags ? '<span class="chip ok">canaries clean</span>' : '<span class="muted">—</span>')}</td>
+      <td class="l desc" title="${esc(r.description)}">${esc(r.description)}</td></tr>`).join('')
+    : '<tr><td colspan="15" class="empty l">no scored experiments yet</td></tr>';
+  tb.querySelectorAll('tr[data-sha]').forEach(tr => tr.addEventListener('click', () => openDiff(tr.dataset.sha, tr.dataset.exp)));
+  const ex = $('lbExcluded');
+  ex.style.display = lb.excluded.length ? '' : 'none';
+  ex.innerHTML = lb.excluded.length ? `EXCLUDED from ranking (LEAK_SUSPECTED): ${lb.excluded.map(r => `exp ${r.exp} (metric ${fmt.s(r.metric)}, shuffled-returns sharpe ${fmt.s(r.canaries.shuffled && r.canaries.shuffled.sharpe, 2)})`).join(' · ')}` : '';
+
+  // ---- panel 4
+  const eq = st.equity;
+  if (eq) {
+    $('eqMeta').textContent = `exp ${eq.exp} · ${eq.description || ''}`;
+    const nn = $('eqNote');
+    if (eq.beats_buy_hold) { nn.className = 'note good'; nn.textContent = `Beats buy & hold on validation: strategy ${fmt.s(eq.strategy_return * 100, 1)}% vs B&H ${fmt.s(eq.buy_hold_return * 100, 1)}% (mean across series) · spread ${fmt.s(eq.spread * 100, 1)} pts.`; }
+    else { nn.className = 'note bad'; nn.textContent = `Does NOT beat buy & hold on validation: strategy ${fmt.s(eq.strategy_return * 100, 1)}% vs B&H ${fmt.s(eq.buy_hold_return * 100, 1)}% (mean across series) · spread ${fmt.s(eq.spread * 100, 1)} pts. In crypto this is the baseline most strategies quietly lose to.`; }
+    const ids = Object.keys(eq.series);
+    const ds = [];
+    ids.forEach((sid, i) => {
+      const sr = eq.series[sid]; const alpha = 1 - i * 0.18; const nb = sr.bar[sr.bar.length - 1] || 1;
+      ds.push({ label: `${sid} strategy`, data: sr.bar.map((b, k) => ({ x: 100 * b / nb, y: sr.equity[k] })), borderColor: `rgba(57,135,229,${alpha})`, borderWidth: i === 0 ? 2 : 1.4, pointRadius: 0, tension: 0 });
+      ds.push({ label: `${sid} buy & hold`, data: sr.bar.map((b, k) => ({ x: 100 * b / nb, y: sr.buy_hold[k] })), borderColor: `rgba(217,89,38,${alpha})`, borderWidth: i === 0 ? 2 : 1.4, pointRadius: 0, tension: 0, borderDash: [4, 3] });
+    });
+    equityChart.data.datasets = ds; equityChart.update();
+  } else { $('eqNote').textContent = 'no equity curve on disk yet (logs/curves/exp_N.json is written for kept experiments and the baseline)'; }
+
+  // ---- panel 5
+  const pb = $('prop').querySelector('tbody');
+  pb.innerHTML = st.proposers.length ? st.proposers.map(p => `<tr><td class="l"><span class="badge ${RUNG_CLASS[p.rung] || ''}">${esc(p.rung)}</span> <span class="muted">${esc(p.model)}</span></td><td>${p.calls}</td><td>${p.kept} <span class="muted">(${fmt.pct(p.keep_rate)})</span></td><td>${p.mean_improvement_kept == null ? '—' : fmt.s(p.mean_improvement_kept)}</td><td>${p.cost_per_kept_usd == null ? '—' : fmt.usd(p.cost_per_kept_usd)}</td><td>${p.mean_latency_s == null ? '—' : fmt.n(p.mean_latency_s, 0) + 's'}</td></tr>`).join('') : '<tr><td colspan="6" class="empty l">no proposer calls yet</td></tr>';
+
+  // ---- panel 6 legend
+  const c = st.config;
+  const thr = { NEAR_TRADE_FLOOR: `≤ ${Math.round(c.min_trades * 1.2)} trades (floor ${c.min_trades})`, LOW_TIME_IN_MARKET: `< ${c.tim_min * 100}%`, HIGH_TURNOVER: `> ${c.turnover_max}/yr`, DEEP_DRAWDOWN: `> ${c.mdd_max * 100}%`, IMPROVEMENT_WITHIN_NOISE: lb.recent_metric_std == null ? 'std of last 20: n/a' : `std of last 20 = ${fmt.n(lb.recent_metric_std, 3)}` };
+  $('flagsLegend').innerHTML = Object.entries(FLAG_DEF).map(([k, v]) => `<span>${chip(k)}</span><span class="muted">${v[1]}${thr[k] ? ' · ' + thr[k] : ''}</span>`).join('');
+  $('cfg').textContent = `fees ${c.fee_bps}bp · slippage ${c.slippage_bps}bp per side · MIN_TRADES ${c.min_trades} · rung-3 cap ${fmt.usd(c.rung3_cap_usd)}`;
+}
+
+async function openDiff(sha, exp) {
+  const d = $('drawer'); d.classList.add('open');
+  $('dTitle').textContent = `exp ${exp} · strategy.py diff`; $('dSub').textContent = sha ? `commit ${sha}` : 'reverted experiment — not committed, no diff on disk'; $('dBody').textContent = sha ? 'loading…' : '';
+  if (!sha) return;
+  try {
+    const r = await fetch(`/api/diff/${sha}`); const j = await r.json();
+    $('dSub').textContent = `commit ${sha} · ${j.subject || ''}`;
+    $('dBody').innerHTML = (j.diff || '(empty)').split('\n').map(l => { const e = esc(l); if (l.startsWith('+++') || l.startsWith('---')) return `<span class="meta">${e}</span>`; if (l.startsWith('+')) return `<span class="add">${e}</span>`; if (l.startsWith('-')) return `<span class="del">${e}</span>`; if (l.startsWith('@@')) return `<span class="hunk">${e}</span>`; return e; }).join('\n');
+  } catch (e) { $('dBody').textContent = 'diff unavailable: ' + e; }
+}
+function closeDrawer() { $('drawer').classList.remove('open'); }
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeDrawer(); });
+
+async function poll() {
+  try {
+    const r = await fetch('/api/state?session=' + encodeURIComponent(new URLSearchParams(location.search).get('session') || 'latest'), { cache: 'no-store' });
+    if (r.status === 503) { misses++; $('tick').textContent = 'log mid-write — skipped tick'; return; }
+    const st = await r.json();
+    if (!st.ok) { misses++; return; }
+    misses = 0; render(st);
+  } catch (e) { misses++; $('statusText').textContent = `backend unreachable (${misses})`; $('dot').className = 'dot'; }
+}
+mkRatchet(); mkEquity(); poll(); setInterval(poll, 3000);
+</script>
+</body>
+</html>
