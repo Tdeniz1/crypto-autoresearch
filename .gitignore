@@ -1,0 +1,17 @@
+# secrets
+.env
+*.token
+# data — regenerate with prepare.py; holdout lives outside the tree and is never committed
+data/
+data/holdout/
+# logs and reports are session artifacts (kept locally, not in git)
+logs/
+reports/holdout*
+reports/*.md
+# python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+# dashboard screenshots
+dashboard/*.png
