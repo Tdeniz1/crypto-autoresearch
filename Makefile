@@ -46,3 +46,18 @@ providers: ## provider attribution table across all sessions
 holdout: ## manual holdout evaluation (needs CRYPTO_HOLDOUT_DIR); never run by the loop
 	@test -n "$$CRYPTO_HOLDOUT_DIR" || (echo "set CRYPTO_HOLDOUT_DIR for this command only"; exit 1)
 	$(UV) python scripts/run_holdout.py
+
+# ---- live alerting (never places orders) ----
+.PHONY: promote alerter-once alerter-loop alerter-status alerter-report alerter-test-push
+promote: ## promote a commit: make promote SHA=971bf57 SYMBOL=BTC/USDT TF=1h
+	$(UV) python -m live.promote $(SHA) --symbol $(or $(SYMBOL),BTC/USDT) --timeframe $(or $(TF),1h)
+alerter-once: ## one paper tick (cron entry point)
+	$(UV) python -m live.alerter run --once --mode $(or $(MODE),paper)
+alerter-loop: ## paper alerter daemon: wakes after every bar close
+	$(UV) python -m live.alerter run --loop --mode $(or $(MODE),paper)
+alerter-status: ## state, pending acks, promoted sha
+	$(UV) python -m live.alerter status
+alerter-report: ## designed-vs-taken gap + skip rate → reports/alerter-<date>.md
+	$(UV) python -m live.alerter_report --mode $(or $(MODE),paper)
+alerter-test-push: ## verify ntfy/macOS delivery
+	$(UV) python -m live.alerter test-push

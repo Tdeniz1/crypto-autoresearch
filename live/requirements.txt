@@ -1,0 +1,4 @@
+pandas>=2.2
+numpy>=1.26
+ccxt>=4.4
+httpx>=0.27

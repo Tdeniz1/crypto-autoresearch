@@ -1,0 +1,35 @@
+{
+  "sha": "971bf57",
+  "subject": "exp 9: metric -9.8182 [claude_code/claude-haiku-4-5-20251001] \u2014 Fixed percentage stop-loss: exit to flat if price moves against the entry by more than a fixed thres",
+  "description": "Fixed percentage stop-loss: exit to flat if price moves against the entry by more than a fixed threshold, capping single-trade losses on top of the dual-EMA regime + 80-bar breakout + range/volume confirmed entries.",
+  "source": "live/promoted/971bf57.py",
+  "symbol": "BTC/USDT",
+  "timeframe": "1h",
+  "mode": "paper",
+  "promoted_at": "2026-08-25T19:05:40+00:00",
+  "backtest": {
+    "metric": -9.818191552999865,
+    "sharpe": -0.4909095776499933,
+    "max_drawdown": 0.6542506679677031,
+    "trades": 393,
+    "per_series": {
+      "s0": {
+        "sharpe": -0.8769290973624841,
+        "max_drawdown": 0.5299864066315552
+      },
+      "s1": {
+        "sharpe": -0.8279995894299045,
+        "max_drawdown": 0.6542506679677031
+      },
+      "s2": {
+        "sharpe": -0.3726128277753419,
+        "max_drawdown": 0.6425235814948078
+      },
+      "s3": {
+        "sharpe": 0.11390320396775702,
+        "max_drawdown": 0.5822695224577212
+      }
+    }
+  },
+  "holdout_checked": false
+}

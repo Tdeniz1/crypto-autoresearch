@@ -21,7 +21,7 @@ analyze_providers.py  keep rate / improvement by rung+model
 dashboard/            read-only FastAPI + vanilla JS dashboard
 scripts/run_holdout.py   the only reader of the holdout, run by hand
 scripts/canary_demo.py   proves the canaries catch three planted bugs
-live/executor.py      paper-trading stub with the same position interface (Alpaca paper, no real orders)
+live/                 signal alerter (promote → alert on position change → mandatory ack → designed-vs-taken report); see live/README.md
 program.md            research directions + rules given to the proposer
 logs/session.jsonl    one record per experiment      logs/ledger.jsonl  one record per proposer call
 ```
@@ -94,3 +94,13 @@ If every rung fails `MAX_CONSECUTIVE_PROPOSER_FAILURES` times in a row, the sess
 `data/holdout/` does not exist in this repo. The holdout parquet files live wherever `CRYPTO_HOLDOUT_DIR` points,
 outside the tree. The runner aborts at startup if that variable is present in its environment, rung 2's subprocess
 gets a scrubbed environment, and `scripts/run_holdout.py` refuses to run inside the runner. Run it yourself, rarely.
+
+## Signal alerting (no auto-execution)
+
+`live/alerter.py` runs a promoted commit's `strategy.py` on live bars and pushes an alert (ntfy.sh + `logs/alerts.jsonl`)
+when the position should change — timestamp, symbol, direction, current→target, the strategy's own indicator values
+at that bar, trade size from `RISK_FRACTION`, git sha. Every alert needs `ack <id> taken|skipped --reason`; un-acked
+alerts are re-pushed each tick and `live/alerter_report.py` reports the skip rate and the designed-vs-taken gap.
+Stale bars, API error streaks and live drawdown beyond the backtested max DD halt the alerter with an urgent alert;
+`resume` clears it. Run paper mode for the full forward period first — `--mode live` only swaps credentials/tags and
+still never places orders. Details: `live/README.md`.
