@@ -1,18 +1,40 @@
-"""Seed: 48-bar breakout with a slow-trend filter, long/short, flat inside the band."""
+"""Regime filter: dual EMA trend agreement gates breakout entries; go flat on disagreement instead of flipping directly, to cut turnover."""
 import numpy as np
 import pandas as pd
 
-BREAKOUT = 48
-TREND = 200
+FAST = 50
+SLOW = 200
+BREAKOUT = 80
 
 
 def strategy(df: pd.DataFrame) -> pd.Series:
     close = df["close"]
-    hi = close.rolling(BREAKOUT).max().shift(1)
-    lo = close.rolling(BREAKOUT).min().shift(1)
-    trend = close.rolling(TREND).mean()
-    long_sig = (close > hi) & (close > trend)
-    short_sig = (close < lo) & (close < trend)
-    pos = pd.Series(np.where(long_sig, 1.0, np.where(short_sig, -1.0, np.nan)), index=df.index)
-    pos = pos.ffill().fillna(0.0)
-    return pos
+    fast = close.ewm(span=FAST, min_periods=SLOW).mean()
+    slow = close.ewm(span=SLOW, min_periods=SLOW).mean()
+    hi = close.rolling(BREAKOUT, min_periods=BREAKOUT).max().shift(1)
+    lo = close.rolling(BREAKOUT, min_periods=BREAKOUT).min().shift(1)
+
+    n = len(close)
+    pos = np.zeros(n)
+    state = 0.0
+    for i in range(n):
+        f = fast.iat[i]
+        s = slow.iat[i]
+        h = hi.iat[i]
+        l = lo.iat[i]
+        c = close.iat[i]
+        if np.isnan(f) or np.isnan(s) or np.isnan(h) or np.isnan(l):
+            pos[i] = state
+            continue
+        regime = 1.0 if f > s else (-1.0 if f < s else 0.0)
+        if state == 1.0 and regime != 1.0:
+            state = 0.0
+        elif state == -1.0 and regime != -1.0:
+            state = 0.0
+        if state == 0.0:
+            if c > h and regime == 1.0:
+                state = 1.0
+            elif c < l and regime == -1.0:
+                state = -1.0
+        pos[i] = state
+    return pd.Series(pos, index=df.index)
