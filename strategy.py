@@ -1,4 +1,4 @@
-"""Volume confirmation: add a rolling volume z-score gate on top of the range-expansion breakout filter, requiring participation not clearly below average before taking a signal."""
+"""Fixed percentage stop-loss: exit to flat if price moves against the entry by more than a fixed threshold, capping single-trade losses on top of the dual-EMA regime + 80-bar breakout + range/volume confirmed entries."""
 import numpy as np
 import pandas as pd
 
@@ -9,6 +9,7 @@ RANGE_WINDOW = 20
 RANGE_MULT = 1.1
 VOL_WINDOW = 20
 VOL_Z_MIN = -0.5
+STOP_PCT = 0.10
 
 
 def strategy(df: pd.DataFrame) -> pd.Series:
@@ -35,6 +36,7 @@ def strategy(df: pd.DataFrame) -> pd.Series:
     n = len(close)
     pos = np.zeros(n)
     state = 0.0
+    entry_price = np.nan
     for i in range(n):
         f = fast.iat[i]
         s = slow.iat[i]
@@ -49,13 +51,27 @@ def strategy(df: pd.DataFrame) -> pd.Series:
         regime = 1.0 if f > s else (-1.0 if f < s else 0.0)
         if state == 1.0 and regime != 1.0:
             state = 0.0
+            entry_price = np.nan
         elif state == -1.0 and regime != -1.0:
             state = 0.0
+            entry_price = np.nan
+
+        if state == 1.0 and not np.isnan(entry_price):
+            if c <= entry_price * (1.0 - STOP_PCT):
+                state = 0.0
+                entry_price = np.nan
+        elif state == -1.0 and not np.isnan(entry_price):
+            if c >= entry_price * (1.0 + STOP_PCT):
+                state = 0.0
+                entry_price = np.nan
+
         if state == 0.0:
             confirmed = bool(range_expanded.iat[i]) and bool(volume_confirmed.iat[i])
             if c > h and regime == 1.0 and confirmed:
                 state = 1.0
+                entry_price = c
             elif c < l and regime == -1.0 and confirmed:
                 state = -1.0
+                entry_price = c
         pos[i] = state
     return pd.Series(pos, index=df.index)
