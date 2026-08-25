@@ -100,6 +100,8 @@ def build(mode: str | None) -> tuple[str, dict]:
             lines.append(f"**You left {gap:+.2%} on the table by not following the strategy.** Either follow it or stop running it.")
         elif gap < 0:
             lines.append(f"Your deviations beat the strategy by {-gap:+.2%} this window. That is discretion, not the strategy — the backtest says nothing about it.")
+        elif skipped or unlogged:
+            lines.append(f"Gap is 0 so far: {len(skipped) + len(unlogged)} skipped/unlogged alert(s) have not been priced by enough forward bars yet.")
         else:
             lines.append("No gap: every alert was taken (or no alerts fired).")
         lines.append("")
