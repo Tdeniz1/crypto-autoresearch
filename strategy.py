@@ -1,4 +1,4 @@
-"""Lower vol-scaled size floor (0.1 vs 0.25) so high-vol entries shrink more, on top of 0.5% regime-exit hysteresis, 20% stop, dual-EMA regime + 80-bar breakout + range/volume confirmed entries."""
+"""Slower vol-sizing EWM span (100 vs 50) for smoother position sizes, on top of 0.1 size floor, 0.5% regime-exit hysteresis, 20% stop, dual-EMA regime + 80-bar breakout + range/volume confirmed entries."""
 import numpy as np
 import pandas as pd
 
@@ -10,7 +10,7 @@ RANGE_MULT = 1.1
 VOL_WINDOW = 20
 VOL_Z_MIN = -0.5
 STOP_PCT = 0.20
-VOL_SPAN = 50
+VOL_SPAN = 100
 MIN_SIZE = 0.1
 EXIT_BAND = 0.005
 
