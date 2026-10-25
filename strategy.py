@@ -1,4 +1,4 @@
-"""Volatility-scaled entry size (fixed at entry, capped at 1) using EWM return vol relative to its expanding mean, on top of the dual-EMA regime + 80-bar breakout + range/volume confirmed entries with 10% stop."""
+"""Wider entry-anchored stop (20% instead of 10%) to cut stop-out churn, on top of vol-scaled entry size, dual-EMA regime + 80-bar breakout + range/volume confirmed entries."""
 import numpy as np
 import pandas as pd
 
@@ -9,7 +9,7 @@ RANGE_WINDOW = 20
 RANGE_MULT = 1.1
 VOL_WINDOW = 20
 VOL_Z_MIN = -0.5
-STOP_PCT = 0.10
+STOP_PCT = 0.20
 VOL_SPAN = 50
 MIN_SIZE = 0.25
 
