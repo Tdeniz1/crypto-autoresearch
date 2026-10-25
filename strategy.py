@@ -1,4 +1,4 @@
-"""Even slower vol-sizing EWM span (250 vs 150) for smoother position sizes, on top of 0.1 size floor, 0.5% regime-exit hysteresis, 20% stop, dual-EMA regime + 80-bar breakout + range/volume confirmed entries."""
+"""Even slower vol-sizing EWM span (400 vs 250, same 250-bar warmup) for smoother position sizes, on top of 0.1 size floor, 0.5% regime-exit hysteresis, 20% stop, dual-EMA regime + 80-bar breakout + range/volume confirmed entries."""
 import numpy as np
 import pandas as pd
 
@@ -10,7 +10,8 @@ RANGE_MULT = 1.1
 VOL_WINDOW = 20
 VOL_Z_MIN = -0.5
 STOP_PCT = 0.20
-VOL_SPAN = 250
+VOL_SPAN = 400
+VOL_WARMUP = 250
 MIN_SIZE = 0.1
 EXIT_BAND = 0.005
 
@@ -37,8 +38,8 @@ def strategy(df: pd.DataFrame) -> pd.Series:
     volume_confirmed = vol_z > VOL_Z_MIN
 
     ret = close.pct_change(1)
-    rvol = ret.ewm(span=VOL_SPAN, min_periods=VOL_SPAN).std()
-    rvol_ref = rvol.expanding(min_periods=VOL_SPAN).mean()
+    rvol = ret.ewm(span=VOL_SPAN, min_periods=VOL_WARMUP).std()
+    rvol_ref = rvol.expanding(min_periods=VOL_WARMUP).mean()
     size_raw = (rvol_ref / rvol.where(rvol > 1e-12)).clip(lower=MIN_SIZE, upper=1.0)
 
     n = len(close)
