@@ -1,4 +1,4 @@
-"""Regime-exit hysteresis with a small 0.5% EMA band to cut whipsaw flips, on top of vol-scaled entry size, 20% stop, dual-EMA regime + 80-bar breakout + range/volume confirmed entries."""
+"""Lower vol-scaled size floor (0.1 vs 0.25) so high-vol entries shrink more, on top of 0.5% regime-exit hysteresis, 20% stop, dual-EMA regime + 80-bar breakout + range/volume confirmed entries."""
 import numpy as np
 import pandas as pd
 
@@ -11,7 +11,7 @@ VOL_WINDOW = 20
 VOL_Z_MIN = -0.5
 STOP_PCT = 0.20
 VOL_SPAN = 50
-MIN_SIZE = 0.25
+MIN_SIZE = 0.1
 EXIT_BAND = 0.005
 
 
