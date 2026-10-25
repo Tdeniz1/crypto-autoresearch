@@ -8,6 +8,27 @@ Leakage is treated as the main adversary: physical holdout isolation, a time-bli
 proposer, a static scan, causal-statistics guards, t+1-open execution, three
 canaries on every winner, and deflated-Sharpe accounting for the number of trials.
 
+## Results so far (honest)
+
+Two sessions, 40 experiments total, run on 1h and 15m BTC/ETH bars with 10 bps fees and 10 bps slippage per side.
+
+| session | experiments | kept | validation metric | Sharpe (net) | deflated Sharpe | vs buy and hold |
+|---|---:|---:|---:|---:|---:|---|
+| seed strategy | n/a | n/a | -26.50 | n/a | n/a | n/a |
+| 2026-08-25 (Claude Haiku) | 10 | 4 | -9.82 | -0.49 | -7.39 (16 trials) | -31.6% vs +71.2% |
+| 2026-10-25 (Claude Sonnet) | 30 | 10 | **-4.07** | -0.20 | -5.21 (51 trials) | -20.7% vs +71.2% |
+
+**The loop improves the metric, and the strategy still loses to buy and hold.** That is the
+expected result and the reason the harness exists: after fees, a 2-coin bar strategy rarely beats
+holding, and the deflated Sharpe (which charges for every trial run) stays far below zero. Every
+kept candidate passed all three canaries. The second session also shows the failure mode the
+deflated Sharpe guards against: five kept experiments in a row just lengthened one smoothing
+window (100 to 150 to 250 to 400 to 800 bars), which is tuning to the validation slice, not a new
+idea. The holdout has not been opened.
+
+`make canary-demo` plants three bugs (look-ahead leak, timing leak, broken cost model) and shows
+each is caught by its canary, with no false positive on the correct cost model.
+
 ## Layout
 
 ```
