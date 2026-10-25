@@ -1,4 +1,4 @@
-"""Fixed percentage stop-loss: exit to flat if price moves against the entry by more than a fixed threshold, capping single-trade losses on top of the dual-EMA regime + 80-bar breakout + range/volume confirmed entries."""
+"""Volatility-scaled entry size (fixed at entry, capped at 1) using EWM return vol relative to its expanding mean, on top of the dual-EMA regime + 80-bar breakout + range/volume confirmed entries with 10% stop."""
 import numpy as np
 import pandas as pd
 
@@ -10,6 +10,8 @@ RANGE_MULT = 1.1
 VOL_WINDOW = 20
 VOL_Z_MIN = -0.5
 STOP_PCT = 0.10
+VOL_SPAN = 50
+MIN_SIZE = 0.25
 
 
 def strategy(df: pd.DataFrame) -> pd.Series:
@@ -33,9 +35,15 @@ def strategy(df: pd.DataFrame) -> pd.Series:
     vol_z = (volume - vol_mean) / vol_std_safe
     volume_confirmed = vol_z > VOL_Z_MIN
 
+    ret = close.pct_change(1)
+    rvol = ret.ewm(span=VOL_SPAN, min_periods=VOL_SPAN).std()
+    rvol_ref = rvol.expanding(min_periods=VOL_SPAN).mean()
+    size_raw = (rvol_ref / rvol.where(rvol > 1e-12)).clip(lower=MIN_SIZE, upper=1.0)
+
     n = len(close)
     pos = np.zeros(n)
     state = 0.0
+    size = 1.0
     entry_price = np.nan
     for i in range(n):
         f = fast.iat[i]
@@ -46,7 +54,7 @@ def strategy(df: pd.DataFrame) -> pd.Series:
         ra = range_avg.iat[i]
         vz = vol_z.iat[i]
         if np.isnan(f) or np.isnan(s) or np.isnan(h) or np.isnan(l) or np.isnan(ra) or np.isnan(vz):
-            pos[i] = state
+            pos[i] = state * size
             continue
         regime = 1.0 if f > s else (-1.0 if f < s else 0.0)
         if state == 1.0 and regime != 1.0:
@@ -67,11 +75,16 @@ def strategy(df: pd.DataFrame) -> pd.Series:
 
         if state == 0.0:
             confirmed = bool(range_expanded.iat[i]) and bool(volume_confirmed.iat[i])
+            sz = size_raw.iat[i]
+            if np.isnan(sz):
+                sz = 1.0
             if c > h and regime == 1.0 and confirmed:
                 state = 1.0
+                size = float(sz)
                 entry_price = c
             elif c < l and regime == -1.0 and confirmed:
                 state = -1.0
+                size = float(sz)
                 entry_price = c
-        pos[i] = state
+        pos[i] = state * size
     return pd.Series(pos, index=df.index)
