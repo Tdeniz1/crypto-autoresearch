@@ -1,4 +1,4 @@
-"""Wider entry-anchored stop (20% instead of 10%) to cut stop-out churn, on top of vol-scaled entry size, dual-EMA regime + 80-bar breakout + range/volume confirmed entries."""
+"""Regime-exit hysteresis with a small 0.5% EMA band to cut whipsaw flips, on top of vol-scaled entry size, 20% stop, dual-EMA regime + 80-bar breakout + range/volume confirmed entries."""
 import numpy as np
 import pandas as pd
 
@@ -12,6 +12,7 @@ VOL_Z_MIN = -0.5
 STOP_PCT = 0.20
 VOL_SPAN = 50
 MIN_SIZE = 0.25
+EXIT_BAND = 0.005
 
 
 def strategy(df: pd.DataFrame) -> pd.Series:
@@ -57,10 +58,10 @@ def strategy(df: pd.DataFrame) -> pd.Series:
             pos[i] = state * size
             continue
         regime = 1.0 if f > s else (-1.0 if f < s else 0.0)
-        if state == 1.0 and regime != 1.0:
+        if state == 1.0 and f < s * (1.0 - EXIT_BAND):
             state = 0.0
             entry_price = np.nan
-        elif state == -1.0 and regime != -1.0:
+        elif state == -1.0 and f > s * (1.0 + EXIT_BAND):
             state = 0.0
             entry_price = np.nan
 
